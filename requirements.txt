@@ -2,4 +2,5 @@ discord.py
 flask
 pytz
 motor
-python-dotenv
+dnspython
+certifi

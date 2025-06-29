@@ -4,9 +4,14 @@ import motor.motor_asyncio
 import discord
 import re
 import unicodedata
+import certifi # <--- IMPORTA A NOVA FERRAMENTA
 
 # Conecta ao MongoDB usando a URI do ambiente
-DB_CLIENT = motor.motor_asyncio.AsyncIOMotorClient(os.environ['MONGO_URI'])
+# --- CORREÇÃO: Adiciona o tlsCAFile para garantir a conexão SSL correta ---
+DB_CLIENT = motor.motor_asyncio.AsyncIOMotorClient(
+    os.environ['MONGO_URI'],
+    tlsCAFile=certifi.where()
+)
 db = DB_CLIENT.sykocinema # Nome do nosso banco de dados
 
 # Coleções (como se fossem as tabelas)
@@ -16,8 +21,8 @@ agendamentos_db = db.agendamentos
 
 async def setup_database():
     # Cria índices para otimizar as buscas por nome, o que acelera o bot
-    await assistidos_db.create_index("nome_sanitizado", unique=True)
-    await watchlist_db.create_index("nome_sanitizado", unique=True)
+    await assistidos_db.create_index("nome_sanitizado", unique=True, background=True)
+    await watchlist_db.create_index("nome_sanitizado", unique=True, background=True)
     print("Banco de dados conectado e índices verificados.")
 
 def normalizar_texto(texto):
