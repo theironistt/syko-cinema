@@ -1,23 +1,24 @@
 # utils.py
-import json
+import os
+import motor.motor_asyncio
+import discord
 import re
 import unicodedata
-import discord
 
-def carregar_dados():
-    try:
-        with open('dados.json', 'r', encoding='utf-8') as f:
-            dados = json.load(f)
-            dados.setdefault('assistidos', [])
-            dados.setdefault('watchlist', [])
-            dados.setdefault('agendamentos', [])
-            return dados
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"assistidos": [], "watchlist": [], "agendamentos": []}
+# Conecta ao MongoDB usando a URI do ambiente
+DB_CLIENT = motor.motor_asyncio.AsyncIOMotorClient(os.environ['MONGO_URI'])
+db = DB_CLIENT.sykocinema # Nome do nosso banco de dados
 
-def salvar_dados(dados):
-    with open('dados.json', 'w', encoding='utf-8') as f:
-        json.dump(dados, f, indent=4, ensure_ascii=False)
+# Coleções (como se fossem as tabelas)
+assistidos_db = db.assistidos
+watchlist_db = db.watchlist
+agendamentos_db = db.agendamentos
+
+async def setup_database():
+    # Cria índices para otimizar as buscas por nome, o que acelera o bot
+    await assistidos_db.create_index("nome_sanitizado", unique=True)
+    await watchlist_db.create_index("nome_sanitizado", unique=True)
+    print("Banco de dados conectado e índices verificados.")
 
 def normalizar_texto(texto):
     if not texto: return ""
