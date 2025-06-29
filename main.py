@@ -14,10 +14,17 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
+# --- CORREÇÃO: Cria uma "trava" para garantir que os Cogs sejam carregados apenas uma vez ---
+bot.cogs_loaded = False
+
 @bot.event
 async def on_ready():
+    # Se os cogs já foram carregados, não faz nada. Evita duplicação em reconexões.
+    if bot.cogs_loaded:
+        return
+
     print(f'logado com sucesso como {bot.user}!')
-    print(f'versão 3.4, a versão de ouro. estável, completa e pronta para o serviço.')
+    print(f'versão finalíssima. sem duplicatas.')
     print('------')
     
     await setup_database()
@@ -29,6 +36,9 @@ async def on_ready():
                 print(f'Cog {filename} carregado com sucesso.')
             except Exception as e:
                 print(f'Falha ao carregar o cog {filename}: {e}')
+    
+    # Ativa a trava para que este bloco de código não rode novamente.
+    bot.cogs_loaded = True
     
     if "RENDER" in os.environ:
         print("\n---------------------------------")
