@@ -35,9 +35,9 @@ def normalizar_texto(texto):
 def sanitizar_nome(nome):
     return re.sub(r'[^\w\s]', '', normalizar_texto(nome))
 
-# --- CORREÇÃO FINAL: Parser totalmente reescrito para ser mais robusto ---
+# --- CORREÇÃO FINALÍSSIMA: Parser totalmente reescrito para ser mais robusto ---
 def parse_args(args_str):
-    # Define as palavras-chave que estamos procurando
+    # Define as palavras-chave que estamos procurando e seus sinônimos
     chaves = ['nome', 'nota', 'liked', 'comentario', 'comentário', 'genero', 'gênero', 'escolhido por', 'data', 'ano', 'emoji', 'hora']
     
     # Mapa para normalizar chaves (ex: comentário vira comentario)
@@ -51,36 +51,45 @@ def parse_args(args_str):
     padrao = re.compile(r'\b(' + '|'.join(chaves) + r'):?', re.IGNORECASE)
     
     dados_capturados = {}
-    ultimo_indice = 0
     
-    # Encontra a primeira chave para saber onde o texto principal começa
-    primeiro_match = padrao.search(args_str)
+    # Encontra todas as ocorrências das chaves e suas posições
+    matches = list(padrao.finditer(args_str))
     
-    # Se nenhuma chave for encontrada, toda a string é o 'nome'
-    if not primeiro_match:
-        if args_str:
-            dados_capturados['nome'] = args_str.strip()
+    # Se não há chaves, tudo é o nome.
+    if not matches:
+        if args_str: dados_capturados['nome'] = args_str.strip()
         return dados_capturados
-    
-    # Se houver texto antes da primeira chave, ele é o 'nome'
+
+    # Se houver texto ANTES da primeira chave, ele é o nome.
+    primeiro_match = matches[0]
     texto_antes = args_str[:primeiro_match.start()].strip()
     if texto_antes:
         dados_capturados['nome'] = texto_antes
         
-    # Itera sobre todas as chaves encontradas na string
-    for match in padrao.finditer(args_str):
-        # Normaliza a chave encontrada para o nosso padrão
-        chave_encontrada = normalizar_texto(match.group(1))
+    # Itera sobre as chaves encontradas para extrair seus valores
+    for i, match_atual in enumerate(matches):
+        chave_encontrada = normalizar_texto(match_atual.group(1))
         chave_mapeada = chaves_map.get(chave_encontrada)
         
-        # Pega o texto entre a chave atual e a próxima
-        inicio_valor = match.end()
-        proximo_match = padrao.search(args_str, inicio_valor)
-        fim_valor = proximo_match.start() if proximo_match else len(args_str)
+        if not chave_mapeada: continue
+
+        # Define o início do valor
+        inicio_valor = match_atual.end()
         
+        # Define o fim do valor (o início da próxima chave, ou o final da string)
+        if i + 1 < len(matches):
+            proximo_match = matches[i+1]
+            fim_valor = proximo_match.start()
+        else:
+            fim_valor = len(args_str)
+            
         valor = args_str[inicio_valor:fim_valor].strip()
         
-        if chave_mapeada:
+        # Se a chave for 'nome', o valor pode ter sido capturado antes, então só atualiza se estiver vazio.
+        if chave_mapeada == 'nome':
+            if 'nome' not in dados_capturados:
+                dados_capturados[chave_mapeada] = valor
+        else:
             dados_capturados[chave_mapeada] = valor
             
     return dados_capturados
