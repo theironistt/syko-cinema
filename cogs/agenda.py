@@ -16,7 +16,6 @@ class Agenda(commands.Cog):
         await self.bot.wait_until_ready()
         agora = datetime.now(self.fuso_horario)
         
-        # O find({}) busca todos os documentos na coleção
         cursor = agendamentos_db.find({})
         agendamentos_atuais = await cursor.to_list(length=None)
 
@@ -90,7 +89,7 @@ class Agenda(commands.Cog):
         nome_limpo = nome_para_cancelar.strip('"')
         nome_sanitizado = sanitizar_nome(nome_limpo)
         
-        resultado = await agendamentos_db.delete_one({'filme': {'$regex': f'^{nome_sanitizado}$', '$options': 'i'}})
+        resultado = await agendamentos_db.delete_one({'filme': {'$regex': f'^{nome_limpo}$', '$options': 'i'}})
 
         if resultado.deleted_count > 0:
             await ctx.send(f"agendamento de '{nome_limpo}' cancelado. fica pra próxima então.")

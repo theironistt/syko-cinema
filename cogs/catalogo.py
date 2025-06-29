@@ -43,17 +43,16 @@ class Catalogo(commands.Cog):
             else:
                 novo_filme['escolhido_por'] = ctx.author.id
 
-            # Insere no banco de dados
             await assistidos_db.insert_one(novo_filme)
             
-            # Remove da watchlist se existir
             resultado_remocao = await watchlist_db.delete_one({'nome_sanitizado': nome_filme_sanitizado})
             
             nome_autor = ctx.author.display_name
+            nome_filme_formatado = nome_filme.strip()
             if resultado_remocao.deleted_count > 0:
-                await ctx.send(f"perfeito, {nome_autor}! '{nome_filme.strip()}' foi assistido e já risquei ele da nossa watchlist interminável.")
+                await ctx.send(f"perfeito, {nome_autor}! '{nome_filme_formatado}' foi assistido e já risquei ele da nossa watchlist interminável.")
             else:
-                respostas = [f"anotado, {nome_autor}. '{nome_filme.strip()}' agora faz parte da nossa história. tipo, sei lá, o ed e lorraine, só que com menos drama e demonios. eu acho.", f"feito, {nome_autor}! '{nome_filme.strip()}' foi devidamente catalogado na nossa estante virtual. espero que a crítica bianca precinotto aprove.", f"registrado, {nome_autor}. a gente agora tem uma entrada nova no diário de bordo sobre '{nome_filme.strip()}'. também vou assistir depois e conto pra vocês se gostei. tomara que seja um clássico cult."]
+                respostas = [f"anotado, {nome_autor}. '{nome_filme_formatado}' agora faz parte da nossa história. tipo, sei lá, o ed e lorraine, só que com menos drama e demonios. eu acho.", f"feito, {nome_autor}! '{nome_filme_formatado}' foi devidamente catalogado na nossa estante virtual. espero que a crítica bianca precinotto aprove.", f"registrado, {nome_autor}. a gente agora tem uma entrada nova no diário de bordo sobre '{nome_filme_formatado}'. também vou assistir depois e conto pra vocês se gostei. tomara que seja um clássico cult."]
                 await ctx.send(random.choice(respostas))
         except ValueError:
             await ctx.send(f"hm, {ctx.author.display_name}, essa nota aí tá esquisita. `nota:` precisa ser um número.")
