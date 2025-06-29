@@ -4,3 +4,4 @@ pytz
 motor
 dnspython
 certifi
+python-dotenv
