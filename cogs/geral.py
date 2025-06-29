@@ -25,15 +25,22 @@ class Geral(commands.Cog):
             if filtro: return await ctx.send(f"ué, parece que a gente nunca assistiu nada de `{filtro}`.")
             else: return await ctx.send("nosso catálogo tá vazio. use `!assistido` pra gente começar.")
 
-        # --- CORREÇÃO: Lógica de ordenação aprimorada sem aviso ---
-        # Função auxiliar para converter a data de forma segura
+        # --- CORREÇÃO FINAL: Lógica de ordenação que entende 2 e 4 dígitos ---
         def get_date_obj(item):
+            data_str = item.get('data', '')
+            if not data_str:
+                return datetime.min # Se não houver data, vai para o final
+
             try:
-                # Tenta converter a data do formato que usamos
-                return datetime.strptime(item.get('data', ''), '%d/%m/%Y')
-            except (ValueError, TypeError):
-                # Se falhar, retorna uma data muito antiga para que o item vá para o final
-                return datetime.min
+                # Tenta primeiro o formato com 4 dígitos no ano
+                return datetime.strptime(data_str, '%d/%m/%Y')
+            except ValueError:
+                try:
+                    # Se falhar, tenta o formato com 2 dígitos no ano
+                    return datetime.strptime(data_str, '%d/%m/%y')
+                except ValueError:
+                    # Se ambos falharem, vai para o final
+                    return datetime.min
 
         lista_completa.sort(key=get_date_obj, reverse=True)
         
@@ -47,9 +54,8 @@ class Geral(commands.Cog):
         else:
             lista_a_mostrar = lista_completa
 
-        # Lógica para enviar os embeds
         if not lista_a_mostrar:
-            return # Se a lista final estiver vazia, não faz nada
+            return
             
         embed = discord.Embed(title=titulo, color=discord.Color.from_rgb(255, 105, 180))
         desc = ""
