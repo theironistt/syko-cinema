@@ -10,10 +10,11 @@ class Geral(commands.Cog):
         self.bot = bot
     
     @commands.command(name='lista')
-    async def _lista(self, ctx, filtro: Optional[str] = None):
+    async def _lista(self, ctx, *, filtro: Optional[str] = None):
         query = {}
         if filtro and filtro.lower() != 'tudo':
-            query = {'genero': {'$regex': f'^{filtro}$', '$options': 'i'}}
+            # --- CORREÇÃO: Busca por gênero que CONTENHA o termo, não que seja EXATO ---
+            query = {'genero': {'$regex': filtro, '$options': 'i'}}
 
         cursor = assistidos_db.find(query)
         lista_completa = await cursor.to_list(length=None)
@@ -24,14 +25,20 @@ class Geral(commands.Cog):
 
         lista_completa.sort(key=lambda item: datetime.strptime(item.get('data', '01/01/1900'), '%d/%m/%Y'), reverse=True)
 
-        titulo = "Catálogo Syko Cinema"
-        if filtro and filtro.lower() == 'tudo': titulo += " (Completo)"
-        elif filtro: titulo += f" de {filtro.capitalize()}"
-        else: titulo += " (Últimos 10 Adicionados)"; lista_completa = lista_completa[:10]
+        titulo, lista_a_mostrar = "Catálogo Syko Cinema", []
+        if filtro and filtro.lower() == 'tudo':
+            lista_a_mostrar, titulo = lista_completa, titulo + " (Completo)"
+        elif filtro:
+            lista_a_mostrar, titulo = lista_completa, titulo + f" de {filtro.capitalize()}"
+        else:
+            lista_a_mostrar, titulo = lista_completa[:10], titulo + " (Últimos 10 Adicionados)"
         
-        embed = discord.Embed(title=titulo, color=discord.Color.from_rgb(255, 105, 180))
-        desc = ""
-        for filme in lista_completa:
+        # Lógica de paginação para o Embed
+        embeds = []
+        desc_atual = ""
+        embed_atual = discord.Embed(title=titulo, color=discord.Color.from_rgb(255, 105, 180))
+
+        for filme in lista_a_mostrar:
             try: nome_escolha = (await ctx.guild.fetch_member(int(filme['escolhido_por']))).display_name
             except: nome_escolha = str(filme.get('escolhido_por', 'N/A'))
             
@@ -40,11 +47,21 @@ class Geral(commands.Cog):
             if ano: header_filme += f" ({ano})"
             
             item_completo = f"\n---\n{header_filme}\n**Quem escolheu:** {nome_escolha}\n**Gênero:** {filme.get('genero', 'N/A').capitalize()}\n**Nota:** {filme['nota']}/10 {filme['like']}\n**Comentário:**\n> {filme['comentario']}\n\n*(Assistido em {filme['data']})*\n"
-            if len(desc) + len(item_completo) > 4000:
-                embed.description = desc; await ctx.send(embed=embed); desc = ""
-                embed = discord.Embed(color=discord.Color.from_rgb(255, 105, 180))
-            desc += item_completo
-        if desc: embed.description = desc; await ctx.send(embed=embed)
+            
+            if len(desc_atual) + len(item_completo) > 4000:
+                embed_atual.description = desc_atual
+                embeds.append(embed_atual)
+                desc_atual = ""
+                embed_atual = discord.Embed(color=discord.Color.from_rgb(255, 105, 180))
+
+            desc_atual += item_completo
+
+        if desc_atual:
+            embed_atual.description = desc_atual
+            embeds.append(embed_atual)
+
+        for embed in embeds:
+            await ctx.send(embed=embed)
 
     @commands.command(name='buscar')
     async def _buscar(self, ctx, *, termo_busca: str):
