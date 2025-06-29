@@ -4,12 +4,17 @@ import motor.motor_asyncio
 import discord
 import re
 import unicodedata
-import certifi # <--- IMPORTA A NOVA FERRAMENTA
+import certifi
 
-# Conecta ao MongoDB usando a URI do ambiente
-# --- CORREÇÃO: Adiciona o tlsCAFile para garantir a conexão SSL correta ---
+# --- CORREÇÃO: Conexão mais robusta com o MongoDB Atlas ---
+# Pega a URI de conexão do ambiente
+MONGO_URI = os.environ.get('MONGO_URI')
+
+# Cria o cliente com opções explícitas de TLS e usando o certifi
+# Esta é a configuração padrão da indústria para evitar erros de SSL
 DB_CLIENT = motor.motor_asyncio.AsyncIOMotorClient(
-    os.environ['MONGO_URI'],
+    MONGO_URI,
+    tls=True,
     tlsCAFile=certifi.where()
 )
 db = DB_CLIENT.sykocinema # Nome do nosso banco de dados
@@ -20,10 +25,16 @@ watchlist_db = db.watchlist
 agendamentos_db = db.agendamentos
 
 async def setup_database():
-    # Cria índices para otimizar as buscas por nome, o que acelera o bot
-    await assistidos_db.create_index("nome_sanitizado", unique=True, background=True)
-    await watchlist_db.create_index("nome_sanitizado", unique=True, background=True)
-    print("Banco de dados conectado e índices verificados.")
+    try:
+        # Tenta enviar um comando simples para verificar a conexão
+        await DB_CLIENT.admin.command('ping')
+        print("Conexão com o MongoDB estabelecida com sucesso.")
+        # Cria índices para otimizar as buscas
+        await assistidos_db.create_index("nome_sanitizado", unique=True, background=True)
+        await watchlist_db.create_index("nome_sanitizado", unique=True, background=True)
+        print("Índices do banco de dados verificados/criados.")
+    except Exception as e:
+        print(f"ERRO DE CONEXÃO COM O MONGODB: {e}")
 
 def normalizar_texto(texto):
     if not texto: return ""
