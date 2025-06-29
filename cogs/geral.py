@@ -24,8 +24,7 @@ class Geral(commands.Cog):
 
         lista_completa.sort(key=lambda item: datetime.strptime(item.get('data', '01/01/1900'), '%d/%m/%Y'), reverse=True)
 
-        titulo = "Catálogo Syko Cinema"
-        lista_a_mostrar = []
+        titulo, lista_a_mostrar = "Catálogo Syko Cinema", []
         if filtro and filtro.lower() == 'tudo':
             lista_a_mostrar, titulo = lista_completa, titulo + " (Completo)"
         elif filtro:
@@ -79,7 +78,7 @@ class Geral(commands.Cog):
         else:
             cursor = watchlist_db.find()
             watchlist = await cursor.to_list(length=None)
-            if not watchlist: return await ctx.send("nossa... a gente não quer assistir nada? a watchlist tá vazia.")
+            if not watchlist: return await ctx.send("nossa... a watchlist tá vazia.")
             
             embed = discord.Embed(title="🤔 Nossa Watchlist", color=discord.Color.from_rgb(255, 193, 7))
             embed.description = "\n".join([f"**{i+1}. {item['nome']}** (*add por: {item['adicionado_por']}*)" for i, item in enumerate(watchlist)])

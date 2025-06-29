@@ -7,7 +7,12 @@ import unicodedata
 import certifi
 
 MONGO_URI = os.environ.get('MONGO_URI')
-DB_CLIENT = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI, tlsCAFile=certifi.where())
+
+DB_CLIENT = motor.motor_asyncio.AsyncIOMotorClient(
+    MONGO_URI,
+    tls=True,
+    tlsCAFile=certifi.where()
+)
 db = DB_CLIENT.sykocinema
 
 assistidos_db = db.assistidos
