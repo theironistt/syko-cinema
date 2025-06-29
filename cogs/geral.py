@@ -14,7 +14,6 @@ class Geral(commands.Cog):
         query = {}
         titulo = "Catálogo Syko Cinema"
         
-        # Define a query para o banco de dados se um filtro de gênero for fornecido
         if filtro and filtro.lower() != 'tudo':
             query = {'genero': {'$regex': filtro, '$options': 'i'}}
             titulo += f" de {filtro.capitalize()}"
@@ -26,23 +25,32 @@ class Geral(commands.Cog):
             if filtro: return await ctx.send(f"ué, parece que a gente nunca assistiu nada de `{filtro}`.")
             else: return await ctx.send("nosso catálogo tá vazio. use `!assistido` pra gente começar.")
 
-        # Ordena a lista de resultados em Python pela data
-        try:
-            lista_completa.sort(key=lambda item: datetime.strptime(item.get('data', '01/01/1900'), '%d/%m/%Y'), reverse=True)
-        except (ValueError, KeyError):
-            await ctx.send("aviso: alguns itens da lista podem não estar ordenados por data devido a formatos inválidos.")
+        # --- CORREÇÃO: Lógica de ordenação aprimorada sem aviso ---
+        # Função auxiliar para converter a data de forma segura
+        def get_date_obj(item):
+            try:
+                # Tenta converter a data do formato que usamos
+                return datetime.strptime(item.get('data', ''), '%d/%m/%Y')
+            except (ValueError, TypeError):
+                # Se falhar, retorna uma data muito antiga para que o item vá para o final
+                return datetime.min
+
+        lista_completa.sort(key=get_date_obj, reverse=True)
         
-        # Define qual fatia da lista será mostrada
+        lista_a_mostrar = []
         if filtro and filtro.lower() == 'tudo':
             lista_a_mostrar = lista_completa
             titulo += " (Completo)"
         elif not filtro:
             lista_a_mostrar = lista_completa[:10]
             titulo += " (Últimos 10 Adicionados)"
-        else: # Caso de filtro por gênero
+        else:
             lista_a_mostrar = lista_completa
 
         # Lógica para enviar os embeds
+        if not lista_a_mostrar:
+            return # Se a lista final estiver vazia, não faz nada
+            
         embed = discord.Embed(title=titulo, color=discord.Color.from_rgb(255, 105, 180))
         desc = ""
         for filme in lista_a_mostrar:
@@ -57,12 +65,11 @@ class Geral(commands.Cog):
             
             item_completo = f"\n---\n{header_filme}\n**Quem escolheu:** {nome_escolha}\n**Gênero:** {filme.get('genero', 'N/A').capitalize()}\n**Nota:** {filme.get('nota', 0)}/10 {filme.get('like', '—')}\n**Comentário:**\n> {filme.get('comentario', 'sem comentários.')}\n\n*(Assistido em {filme.get('data', 'N/A')})*\n"
             
-            # Lógica para não estourar o limite de caracteres do Discord
             if len(desc) + len(item_completo) > 4000:
                 embed.description = desc
                 await ctx.send(embed=embed)
                 desc = ""
-                embed = discord.Embed(color=discord.Color.from_rgb(255, 105, 180)) # Novo embed sem título para continuação
+                embed = discord.Embed(color=discord.Color.from_rgb(255, 105, 180))
 
             desc += item_completo
         
@@ -73,7 +80,6 @@ class Geral(commands.Cog):
     @commands.command(name='buscar')
     async def _buscar(self, ctx, *, termo_busca: str):
         termo_sanitizado = sanitizar_nome(termo_busca)
-        # Regex para buscar palavras em qualquer ordem
         regex_query = {'$regex': '.*' + '.*'.join(termo_sanitizado.split()) + '.*', '$options': 'i'}
         
         res_assistidos = await assistidos_db.find({'nome_sanitizado': regex_query}).to_list(length=None)
@@ -123,7 +129,6 @@ class Geral(commands.Cog):
         try:
             tipo_lista_norm = normalizar_texto(tipo_lista)
             if tipo_lista_norm not in ['assistido', 'watchlist']: raise ValueError()
-            chave_json = 'assistidos' if tipo_lista_norm == 'assistido' else 'watchlist'
             
             nome_limpo = nome_para_remover.strip('"')
             collection = assistidos_db if tipo_lista_norm == 'assistido' else watchlist_db
