@@ -13,29 +13,25 @@ class Geral(commands.Cog):
     async def _lista(self, ctx, filtro: Optional[str] = None):
         query = {}
         if filtro and filtro.lower() != 'tudo':
-            # Busca por gênero de forma case-insensitive
             query = {'genero': {'$regex': f'^{filtro}$', '$options': 'i'}}
 
         cursor = assistidos_db.find(query)
         lista_completa = await cursor.to_list(length=None)
         
-        if not lista_completa: return await ctx.send(f"nenhum filme encontrado para o gênero '{filtro}'." if filtro else "nosso catálogo tá vazio.")
+        if not lista_completa:
+            if filtro: return await ctx.send(f"ué, parece que a gente nunca assistiu nada de `{filtro}`.")
+            else: return await ctx.send("nosso catálogo tá vazio. use `!assistido` pra gente começar.")
 
-        # Ordena a lista em Python, pois ordenar por data-string no DB é complexo
         lista_completa.sort(key=lambda item: datetime.strptime(item.get('data', '01/01/1900'), '%d/%m/%Y'), reverse=True)
 
-        titulo, lista_a_mostrar = "Catálogo Syko Cinema", []
-        if filtro and filtro.lower() != 'tudo':
-            lista_a_mostrar, titulo = lista_completa, titulo + f" de {filtro.capitalize()}"
-        elif filtro and filtro.lower() == 'tudo':
-            lista_a_mostrar, titulo = lista_completa, titulo + " (Completo)"
-        else:
-            lista_a_mostrar, titulo = lista_completa[:10], titulo + " (Últimos 10 Adicionados)"
+        titulo = "Catálogo Syko Cinema"
+        if filtro and filtro.lower() == 'tudo': titulo += " (Completo)"
+        elif filtro: titulo += f" de {filtro.capitalize()}"
+        else: titulo += " (Últimos 10 Adicionados)"; lista_completa = lista_completa[:10]
         
-        # Lógica de paginação para o Embed
         embed = discord.Embed(title=titulo, color=discord.Color.from_rgb(255, 105, 180))
         desc = ""
-        for filme in lista_a_mostrar:
+        for filme in lista_completa:
             try: nome_escolha = (await ctx.guild.fetch_member(int(filme['escolhido_por']))).display_name
             except: nome_escolha = str(filme.get('escolhido_por', 'N/A'))
             
@@ -45,18 +41,15 @@ class Geral(commands.Cog):
             
             item_completo = f"\n---\n{header_filme}\n**Quem escolheu:** {nome_escolha}\n**Gênero:** {filme.get('genero', 'N/A').capitalize()}\n**Nota:** {filme['nota']}/10 {filme['like']}\n**Comentário:**\n> {filme['comentario']}\n\n*(Assistido em {filme['data']})*\n"
             if len(desc) + len(item_completo) > 4000:
-                embed.description = desc
-                await ctx.send(embed=embed)
-                desc = ""
+                embed.description = desc; await ctx.send(embed=embed); desc = ""
                 embed = discord.Embed(color=discord.Color.from_rgb(255, 105, 180))
-
+            desc += item_completo
         if desc: embed.description = desc; await ctx.send(embed=embed)
 
     @commands.command(name='buscar')
     async def _buscar(self, ctx, *, termo_busca: str):
         termo_sanitizado = sanitizar_nome(termo_busca)
-        # Regex para busca parcial e case-insensitive
-        regex_query = {'$regex': termo_sanitizado, '$options': 'i'}
+        regex_query = {'$regex': termo_sanitizado.replace(" ", ".*"), '$options': 'i'}
         
         res_assistidos = await assistidos_db.find({'nome_sanitizado': regex_query}).to_list(length=None)
         res_watchlist = await watchlist_db.find({'nome_sanitizado': regex_query}).to_list(length=None)
@@ -82,7 +75,7 @@ class Geral(commands.Cog):
         else:
             cursor = watchlist_db.find()
             watchlist = await cursor.to_list(length=None)
-            if not watchlist: return await ctx.send("nossa... a watchlist tá vazia.")
+            if not watchlist: return await ctx.send("nossa... a gente não quer assistir nada? a watchlist tá vazia.")
             
             embed = discord.Embed(title="🤔 Nossa Watchlist", color=discord.Color.from_rgb(255, 193, 7))
             embed.description = "\n".join([f"**{i+1}. {item['nome']}** (*add por: {item['adicionado_por']}*)" for i, item in enumerate(watchlist)])
@@ -90,9 +83,9 @@ class Geral(commands.Cog):
 
     @commands.command(name='top')
     async def _top(self, ctx):
-        cursor = assistidos_db.find().sort("nota", -1).limit(5)
+        cursor = assistidos_db.find({}).sort("nota", -1).limit(5)
         lista_ordenada = await cursor.to_list(length=5)
-        if not lista_ordenada: return await ctx.send("precisamos de mais filmes no catálogo pra eu poder montar um pódio!")
+        if not lista_ordenada: return await ctx.send("precisamos de pelo menos um filme no catálogo pra eu poder montar um pódio!")
         
         embed = discord.Embed(title="🏆 Nosso Top 5 Filmes & Séries", color=discord.Color.gold())
         medalhas = ["🥇", "🥈", "🥉", "4.", "5."]
@@ -115,8 +108,18 @@ class Geral(commands.Cog):
 
     @commands.command(name='comandos')
     async def _comandos(self, ctx):
-        # ... (código do !comandos continua o mesmo)
-        pass
+        embed = discord.Embed(title="📜 Lista de Comandos do Syko Cinema", color=discord.Color.dark_green(), description="Eu entendo os campos mesmo sem acento ou ':' (dois-pontos)!")
+        embed.add_field(name="`!assistido`", value="`nome [nome] nota [nota] genero [genero]`\n*Opcionais: `liked sim`, `comentario [texto]`, `escolhido por [nome]`, `data [d/m/a]`, `ano [ano]`, `emoji [emojis]`*", inline=False)
+        embed.add_field(name="`!agendar`", value="`nome [nome] data [d/m/a] hora [h:m]`", inline=False)
+        embed.add_field(name="`!agenda`", value="Mostra as próximas sessões agendadas.", inline=False)
+        embed.add_field(name="`!cancelar \"[nome]\"`", value="Cancela uma sessão agendada.", inline=False)
+        embed.add_field(name="`!remover assistido \"[nome]\"`", value="Remove um filme do histórico.", inline=False)
+        embed.add_field(name="`!remover watchlist \"[nome]\"`", value="Remove um filme da watchlist.", inline=False)
+        embed.add_field(name="`!lista`, `!lista [genero]`, `!lista tudo`", value="Mostra os filmes assistidos.", inline=False)
+        embed.add_field(name="`!buscar [termo]`", value="Busca por um filme em todas as listas.", inline=False)
+        embed.add_field(name="`!watchlist [nome]` / `!watchlist`", value="Adiciona um filme à watchlist ou a lista.", inline=False)
+        embed.add_field(name="`!top`", value="Exibe o ranking dos 5 melhores.", inline=False)
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Geral(bot))
