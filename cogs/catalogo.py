@@ -40,11 +40,11 @@ class Catalogo(commands.Cog):
             print(f"Sanitizado: {nome_filme_sanitizado}")
 
             if await assistidos_db.find_one({'nome_sanitizado': nome_filme_sanitizado}):
-                return await ctx.send("eita, parece que esse filme já tá na nossa lista de assistidos.")
+                return await ctx.send("eita, esse filme já tá nos nossos assistidos. se não lembra é pq era ruim, né.")
 
             nota_str, genero = dados_capturados.get('nota'), dados_capturados.get('genero')
             if not nota_str or not genero:
-                return await ctx.send('preciso pelo menos de `nome`, `nota` e `genero`.')
+                return await ctx.send('perai, zé ruela. preciso pelo menos de `nome:`, `nota:` e `genero:`. escreve direito, eu to fazendo a maior parte')
 
             novo_filme = {
                 'nome': nome_filme.strip(),
@@ -69,7 +69,7 @@ class Catalogo(commands.Cog):
             try:
                 await assistidos_db.insert_one(novo_filme)
             except DuplicateKeyError:
-                return await ctx.send("eita, parece que esse filme já foi registrado nos assistidos.")
+                return await ctx.send("eita, esse filme já tá nos nossos assistidos. se não lembra é pq era ruim, né.")
 
             resultado_remocao = await watchlist_db.delete_one({'nome_sanitizado': nome_filme_sanitizado})
 
@@ -78,9 +78,10 @@ class Catalogo(commands.Cog):
                 await ctx.send(f"perfeito, {nome_autor}! '{novo_filme['nome']}' foi assistido e já risquei ele da nossa watchlist interminável.")
             else:
                 respostas = [
-                    f"anotado, {nome_autor}. '{novo_filme['nome']}' agora faz parte da nossa história...",
-                    f"feito, {nome_autor}! '{novo_filme['nome']}' foi devidamente catalogado...",
-                    f"registrado, capitão {nome_autor}. temos uma nova entrada no diário sobre '{novo_filme['nome']}'..."
+                    f"anotado, {nome_autor}. '{novo_filme['nome']}' agora faz parte da nossa história, igual ed e lorraine warren só que com menos drama e demonios...",
+                    f"feito, {nome_autor}! '{novo_filme['nome']}' entrou no sistema. cuidado, isso pode ser usado contra você em uma discussão futura 🔍",
+                    f"registrado, {nome_autor}. o filme '{novo_filme['nome']}' tá na lista e vc não pode mais fingir que não escolheu 🤣"
+                    f"beleza, {nome_autor}.  '{novo_filme['nome']}' ja ta dentro do catalogo do nosso culto sagrado"
                 ]
                 await ctx.send(random.choice(respostas))
 
