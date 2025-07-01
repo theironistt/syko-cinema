@@ -34,7 +34,7 @@ class Catalogo(commands.Cog):
             dados_capturados = parse_args(argumentos_str)
             nome_filme = dados_capturados.get('nome')
             if not nome_filme:
-                return await ctx.send('o campo `nome` é essencial.')
+                return await ctx.send('tá faltando o nome. dãaaa.')
 
             nome_filme_sanitizado = sanitizar_nome(nome_filme)
             print(f"Sanitizado: {nome_filme_sanitizado}")
@@ -77,12 +77,33 @@ class Catalogo(commands.Cog):
             if resultado_remocao.deleted_count > 0:
                 await ctx.send(f"perfeito, {nome_autor}! '{novo_filme['nome']}' foi assistido e já risquei ele da nossa watchlist interminável.")
             else:
-                respostas = [
-                    f"anotado, {nome_autor}. '{novo_filme['nome']}' agora faz parte da nossa história, igual ed e lorraine warren só que com menos drama e demonios...",
-                    f"feito, {nome_autor}! '{novo_filme['nome']}' entrou no sistema. cuidado, isso pode ser usado contra você em uma discussão futura 🔍",
-                    f"registrado, {nome_autor}. o filme '{novo_filme['nome']}' tá na lista e vc não pode mais fingir que não escolheu 🤣"
-                    f"beleza, {nome_autor}.  '{novo_filme['nome']}' ja ta dentro do catalogo do nosso culto sagrado"
-                ]
+                nota = novo_filme['nota']
+                nome = novo_filme['nome']
+
+                respostas = []
+
+                if nota >= 9:
+                    respostas = [
+                        f"'{nome}' foi catalogado com sucesso, {nome_autor}... e com essa nota, deve ter sido bão mesmo! vou assistir. 🌟🎬",
+                        f"anotado. '{nome}' faz parte do culto agora já que a nota foi boa",
+                        f"pronto, {nome_autor}. '{nome}' tá na lista e no seu coração pelo visto, né? o trem foi bom aí com essa nota",
+                        f"nota {nota}? certeza que não foi dopado por efeitos especiais ou trilha emocional? 🎻🤔"
+                    ]
+                elif 6 <= nota < 9:
+                    respostas = [
+                        f"'{nome}' entrou na lista, {nome_autor}. parece que agradou... mas não o suficiente pra eu assistir também 🎞️",
+                        f"ok, '{nome}' catalogado. nota média, gosto ok. nada revolucionário, nada cancelável. 🫱🫲",
+                        f"foi, {nome_autor}. '{nome}' tá salvo e foi digno de um 'hm, bom'. foi igual pizza fria: não impressiona, mas alimenta 🍕",
+                        f"registrado. nota segura. vai valer o comentário no letterboxd?"
+                    ]
+                else:
+                    respostas = [
+                        f"ok, '{nome}' registrado, mas {nota}/10? alguém se arrependeu da escolha 🫢",
+                        f"pronto, {nome_autor}. '{nome}' tá na lista, mas confessa: você só viu até o final por teimosia mesmo 😬",
+                        f"feito. nota baixa e nenhum like? isso parece castigo e não entretenimento 📉📼",
+                        f"ok. '{nome}' foi adicionado, mas vou fingir que você não viu isso sóbrio 👀"
+                    ]
+
                 await ctx.send(random.choice(respostas))
 
             # Log automático
@@ -107,7 +128,7 @@ class Catalogo(commands.Cog):
             await ctx.send(f"hm, {ctx.author.display_name}, essa nota aí tá esquisita.")
         except Exception as e:
             print(f"Ocorreu um erro inesperado no !assistido: {e}")
-            await ctx.send("deu um bug geral na matrix.")
+            await ctx.send("peraí, neo...deu um bug geral na matrix.")
 
 async def setup(bot):
     await bot.add_cog(Catalogo(bot))
