@@ -205,3 +205,5 @@ class Geral(commands.Cog):
         ranking = []
         for user_id, stats in placar.items():
             media = stats
+async def setup(bot):
+    await bot.add_cog(Geral(bot))
