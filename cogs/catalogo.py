@@ -41,7 +41,6 @@ class Catalogo(commands.Cog):
             if not nota_str or not genero:
                 return await ctx.send('perai, zé ruela. preciso pelo menos de `nome:`, `nota:` e `genero:`. escreve direito, eu to fazendo a maior parte')
 
-            # Pré-requisito para o comando !mes
             data_str = dados_capturados.get('data', datetime.now().strftime('%d/%m/%Y'))
             try:
                 formato_data = '%d/%m/%Y' if len(data_str.split('/')[-1]) == 4 else '%d/%m/%y'
@@ -76,33 +75,15 @@ class Catalogo(commands.Cog):
             else:
                 nota = novo_filme['nota']
                 nome_filme_formatado = novo_filme['nome']
-
-                # --- SUAS RESPOSTAS PERSONALIZADAS, MANTIDAS INTACTAS ---
                 if nota >= 9:
-                    respostas = [
-                        f"'{nome_filme_formatado}' foi catalogado com sucesso, {nome_autor}... e com essa nota, deve ter sido bão mesmo! vou assistir. 🌟🎬",
-                        f"anotado. '{nome_filme_formatado}' faz parte do culto agora já que a nota foi boa",
-                        f"pronto, {nome_autor}. '{nome_filme_formatado}' tá na lista e no seu coração pelo visto, né? o trem foi bom aí com essa nota",
-                        f"nota {nota}? certeza que não foi dopado por efeitos especiais ou trilha emocional? 🤔",
-                        f"anotei aqui..nota {nota}.. bom saber que tao so assistindo filmes bons e nada de comprar sachezinho bom pra mim tb"
-                    ]
+                    respostas = [ f"'{nome_filme_formatado}' foi catalogado com sucesso, {nome_autor}... e com essa nota, deve ter sido bão mesmo! vou assistir. 🌟🎬", f"anotado. '{nome_filme_formatado}' faz parte do culto agora já que a nota foi boa", f"pronto, {nome_autor}. '{nome_filme_formatado}' tá na lista e no seu coração pelo visto, né? o trem foi bom aí com essa nota", f"nota {nota}? certeza que não foi dopado por efeitos especiais ou trilha emocional? 🤔", f"anotei aqui..nota {nota}.. bom saber que tao so assistindo filmes bons e nada de comprar sachezinho bom pra mim tb" ]
                 elif 6 <= nota < 9:
-                    respostas = [
-                        f"'{nome_filme_formatado}' entrou na lista, {nome_autor}. parece que agradou... mas não o suficiente pra eu assistir também 🎞️",
-                        f"ok, '{nome_filme_formatado}' catalogado. nota média, gosto ok. nada revolucionário, nada cancelável. 🫱🫲",
-                        f"foi, {nome_autor}. '{nome_filme_formatado}' tá salvo e foi digno de um 'hm, bom'. foi igual pizza fria: não impressiona, mas alimenta 🍕",
-                        f"registrado. nota segura. vai valer o comentário no letterboxd?"
-                    ]
+                    respostas = [ f"'{nome_filme_formatado}' entrou na lista, {nome_autor}. parece que agradou... mas não o suficiente pra eu assistir também 🎞️", f"ok, '{nome_filme_formatado}' catalogado. nota média, gosto ok. nada revolucionário, nada cancelável. 🫱🫲", f"foi, {nome_autor}. '{nome_filme_formatado}' tá salvo e foi digno de um 'hm, bom'. foi igual pizza fria: não impressiona, mas alimenta 🍕", f"registrado. nota segura. vai valer o comentário no letterboxd?" ]
                 else:
-                    respostas = [
-                        f"ok, '{nome_filme_formatado}' registrado, mas {nota}/10? alguém se arrependeu da escolha 🫢",
-                        f"pronto, {nome_autor}. '{nome_filme_formatado}' tá na lista, mas confessa: você só viu até o final por teimosia mesmo 😬",
-                        f"feito. nota baixa e nenhum like? isso parece castigo e não entretenimento 📉📼",
-                        f"ok. '{nome_filme_formatado}' foi adicionado, mas vou fingir que você não viu isso sóbrio 👀"
-                    ]
+                    respostas = [ f"ok, '{nome_filme_formatado}' registrado, mas {nota}/10? alguém se arrependeu da escolha 🫢", f"pronto, {nome_autor}. '{nome_filme_formatado}' tá na lista, mas confessa: você só viu até o final por teimosia mesmo 😬", f"feito. nota baixa e nenhum like? isso parece castigo e não entretenimento 📉📼", f"ok. '{nome_filme_formatado}' foi adicionado, mas vou fingir que você não viu isso sóbrio 👀" ]
                 await ctx.send(random.choice(respostas))
 
-            config = await configuracoes_db.find_one({'_id': 'config_servidor'})
+            config = await configuracoes_db.find_one({'_id': ctx.guild.id})
             if config and 'canal_log_id' in config:
                 log_channel = self.bot.get_channel(config['canal_log_id'])
                 if log_channel:

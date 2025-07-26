@@ -7,48 +7,31 @@ import re
 import asyncio
 from calendar import monthrange
 import pytz
-import random
 from utils import assistidos_db, watchlist_db, configuracoes_db, normalizar_texto, sanitizar_nome
 
-# --- CLASSE PARA OS BOTÕES DE PAGINAÇÃO ---
 class PaginacaoView(discord.ui.View):
     def __init__(self, ctx, embeds):
         super().__init__(timeout=180.0)
-        self.ctx = ctx
-        self.embeds = embeds
-        self.pagina_atual = 0
-        self.message = None
+        self.ctx = ctx; self.embeds = embeds; self.pagina_atual = 0; self.message = None
         self.update_buttons()
-
     async def on_timeout(self):
-        for item in self.children:
-            item.disabled = True
+        for item in self.children: item.disabled = True
         try:
-            if self.message:
-                await self.message.edit(view=self)
-        except discord.NotFound:
-            pass 
-
+            if self.message: await self.message.edit(view=self)
+        except discord.NotFound: pass 
     def update_buttons(self):
         self.children[0].disabled = self.pagina_atual == 0
         self.children[1].disabled = self.pagina_atual >= len(self.embeds) - 1
-
     @discord.ui.button(label="⬅️ anterior", style=discord.ButtonStyle.secondary)
     async def anterior_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.ctx.author:
-            return await interaction.response.send_message("ops! só quem pediu a lista pode navegar.", ephemeral=True)
-        self.pagina_atual -= 1
-        self.update_buttons()
+        if interaction.user != self.ctx.author: return await interaction.response.send_message("ops! só quem pediu a lista pode navegar.", ephemeral=True)
+        self.pagina_atual -= 1; self.update_buttons()
         await interaction.response.edit_message(embed=self.embeds[self.pagina_atual], view=self)
-
     @discord.ui.button(label="próximo ➡️", style=discord.ButtonStyle.secondary)
     async def proximo_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.ctx.author:
-            return await interaction.response.send_message("ops! só quem pediu a lista pode navegar.", ephemeral=True)
-        self.pagina_atual += 1
-        self.update_buttons()
+        if interaction.user != self.ctx.author: return await interaction.response.send_message("ops! só quem pediu a lista pode navegar.", ephemeral=True)
+        self.pagina_atual += 1; self.update_buttons()
         await interaction.response.edit_message(embed=self.embeds[self.pagina_atual], view=self)
-
 
 class Geral(commands.Cog):
     def __init__(self, bot):
@@ -57,94 +40,52 @@ class Geral(commands.Cog):
     
     async def enviar_paginado(self, ctx, titulo_base, lista_de_itens, itens_por_pagina, desc_base=""):
         if not lista_de_itens:
-            if "retrospectiva" in titulo_base.lower():
-                return await ctx.send(f"pelo visto vocês não assistiram nada durante o período especificado. mês de detox? 🤣")
-            else:
-                return await ctx.send("num achei nenhum filme aqui com esses critérios, tenta de outro jeito...")
-        
+            if "retrospectiva" in titulo_base.lower(): return await ctx.send(f"pelo visto vocês não assistiram nada durante o período especificado. mês de detox? 🤣")
+            else: return await ctx.send("num achei nenhum filme aqui com esses critérios, tenta de outro jeito...")
         paginas_de_dados = [lista_de_itens[i:i + itens_por_pagina] for i in range(0, len(lista_de_itens), itens_por_pagina)]
-        total_paginas = len(paginas_de_dados)
-        embeds_paginados = []
-        nomes_cache = {}
-
+        total_paginas, embeds_paginados, nomes_cache = len(paginas_de_dados), [], {}
         for i, pagina_de_dados in enumerate(paginas_de_dados):
             titulo = f"{titulo_base} (página {i + 1}/{total_paginas})"
-            embed_description = desc_base if i == 0 else ""
-            embed = discord.Embed(title=titulo, color=discord.Color.from_rgb(255, 105, 180), description=embed_description)
-            
+            embed = discord.Embed(title=titulo, color=discord.Color.from_rgb(255, 105, 180), description=desc_base if i == 0 else "")
             for filme in pagina_de_dados:
-                user_id_str = str(filme.get('escolhido_por'))
-                nome_escolha = "N/A"
-                if user_id_str in nomes_cache:
-                    nome_escolha = nomes_cache[user_id_str]
+                user_id_str = str(filme.get('escolhido_por')); nome_escolha = "N/A"
+                if user_id_str in nomes_cache: nome_escolha = nomes_cache[user_id_str]
                 else:
                     try:
-                        membro = await ctx.guild.fetch_member(int(user_id_str))
-                        nome_escolha = membro.display_name
-                        nomes_cache[user_id_str] = nome_escolha
-                    except (ValueError, discord.NotFound, TypeError):
-                        nome_escolha = user_id_str
-                        nomes_cache[user_id_str] = nome_escolha
-
-                nome, emojis, ano = filme.get('nome', 'nome não encontrado'), filme.get('emoji', ''), filme.get('ano', '')
-                header_filme = f"{nome} {emojis}"
-                if ano: header_filme += f" ({ano})"
-                
+                        membro = await ctx.guild.fetch_member(int(user_id_str)); nome_escolha = membro.display_name; nomes_cache[user_id_str] = nome_escolha
+                    except: nome_escolha = user_id_str; nomes_cache[user_id_str] = nome_escolha
+                nome, emojis, ano = filme.get('nome', 'N/A'), filme.get('emoji', ''), filme.get('ano', '')
+                header_filme = f"{nome} {emojis}" + (f" ({ano})" if ano else "")
                 valor_campo = f"**gênero:** {filme.get('genero', 'n/a').capitalize()}\n**nota:** {filme.get('nota', 0)}/10 {filme.get('like', '—')}\n**comentário:**\n> {filme.get('comentario', 'sem comentários.')}\n*(assistido em {filme.get('data', 'n/a')})*"
                 embed.add_field(name=f"🎬 {header_filme}", value=valor_campo, inline=False)
             embeds_paginados.append(embed)
-
-        if not embeds_paginados: return
-        
-        view = PaginacaoView(ctx, embeds_paginados)
-        view.message = await ctx.send(embed=view.embeds[0], view=view)
+        if embeds_paginados: view = PaginacaoView(ctx, embeds_paginados); view.message = await ctx.send(embed=view.embeds[0], view=view)
 
     @commands.command(name='configurar')
     @commands.has_permissions(administrator=True)
     async def _configurar(self, ctx, subcomando: str):
         subcomando_norm = normalizar_texto(subcomando)
-        
-        # --- CORREÇÃO AQUI ---
-        # Trocamos o segundo 'if' por 'elif' para criar um fluxo de decisão único.
-        # Agora, ele só entrará no 'else' se nenhuma das condições anteriores for verdadeira.
         if subcomando_norm == 'log_filmes':
-            await configuracoes_db.update_one(
-                {'_id': 'config_servidor'},
-                {'$set': {'canal_log_id': ctx.channel.id}},
-                upsert=True
-            )
+            await configuracoes_db.update_one({'_id': ctx.guild.id}, {'$set': {'canal_log_id': ctx.channel.id}}, upsert=True)
             await ctx.send(f"beleza! este canal (`#{ctx.channel.name}`) foi configurado como o diário oficial de filmes.")
-        
         elif subcomando_norm == 'critico':
-            await configuracoes_db.update_one(
-                {'_id': 'config_servidor'},
-                {'$set': {'canal_critico_id': ctx.channel.id}},
-                upsert=True
-            )
+            await configuracoes_db.update_one({'_id': ctx.guild.id}, {'$set': {'canal_critico_id': ctx.channel.id}}, upsert=True)
             await ctx.send(f"entendido. as minhas críticas ácidas e aleatórias serão enviadas aqui em `#{ctx.channel.name}`. preparem-se.")
-            
-        else:
-            await ctx.send("hm, não conheço essa configuração. use `!configurar log_filmes` ou `!configurar critico`.")
+        else: await ctx.send("hm, não conheço essa configuração. use `!configurar log_filmes` ou `!configurar critico`.")
 
     @commands.command(name='mes')
     async def _mes(self, ctx, *, mes_ano: str):
         mapa_meses = {'jan': 1,'janeiro': 1,'fev': 2,'fevereiro': 2,'mar': 3,'marco': 3,'março': 3,'abr': 4,'abril': 4,'mai': 5,'maio': 5,'jun': 6,'junho': 6,'jul': 7,'julho': 7,'ago': 8,'agosto': 8,'set': 9,'setembro': 9,'out': 10,'outubro': 10,'nov': 11,'novembro': 11,'dez': 12,'dezembro': 12}
         match = re.match(r'([a-zA-Z]+)\s*(\d{2,4})', mes_ano)
         if not match: return await ctx.send("formato inválido. tente `!mes junho25`.")
-        
-        nome_mes, ano_str = match.groups()
-        mes = mapa_meses.get(normalizar_texto(nome_mes))
-        ano = int(ano_str)
+        nome_mes, ano_str = match.groups(); mes = mapa_meses.get(normalizar_texto(nome_mes)); ano = int(ano_str)
         if len(ano_str) == 2: ano += 2000
         if not mes: return await ctx.send(f"não reconheci o mês '{nome_mes}'.")
-
         primeiro_dia = self.fuso_horario.localize(datetime(ano, mes, 1))
         ultimo_dia_mes = monthrange(ano, mes)[1]
         ultimo_dia = self.fuso_horario.localize(datetime(ano, mes, ultimo_dia_mes, 23, 59, 59))
-        
         query = {'data_obj': {'$gte': primeiro_dia, '$lte': ultimo_dia}}
         filmes_do_mes = await assistidos_db.find(query).sort("data_obj", -1).to_list(length=None)
-        
         titulo = f"retrospectiva de {nome_mes.capitalize()} de {ano} 🍿"
         desc_base = f"em {nome_mes.capitalize()} vocês foram bem ocupados! assistiram a **{len(filmes_do_mes)}** produções." if filmes_do_mes else ""
         await self.enviar_paginado(ctx, titulo, filmes_do_mes, 5, desc_base)
@@ -155,28 +96,24 @@ class Geral(commands.Cog):
         if filtro and filtro.lower() != 'tudo':
             query = {'genero': {'$regex': filtro, '$options': 'i'}}
             titulo += f" de {filtro.capitalize()}"
-        
         lista_completa = await assistidos_db.find(query).to_list(length=None)
         if not lista_completa:
             if filtro: return await ctx.send(f"ué, parece que a gente nunca assistiu nada de `{filtro}`.")
-            else: return await ctx.send("nosso catálogo tá vazio. use `!assistido` pra gente começar.")
-        
+            else: return await ctx.send("nosso catálogo tá vazio.")
         def get_date_obj(item):
-            data_str = item.get('data', '')
+            data_str = item.get('data', '');
             if not data_str: return datetime.min
             try: return datetime.strptime(data_str, '%d/%m/%Y')
             except ValueError:
                 try: return datetime.strptime(data_str, '%d/%m/%y')
                 except ValueError: return datetime.min
         lista_completa.sort(key=get_date_obj, reverse=True)
-        
         lista_a_mostrar = lista_completa
         if not filtro:
             titulo += " (últimos 10 adicionados)"
             lista_a_mostrar = lista_completa[:10]
         elif filtro.lower() == 'tudo':
             titulo += " (completo)"
-        
         await self.enviar_paginado(ctx, titulo, lista_a_mostrar, 3)
 
     @commands.command(name='buscar')
@@ -198,7 +135,7 @@ class Geral(commands.Cog):
         if argumento:
             nome_sanitizado = sanitizar_nome(argumento)
             if await watchlist_db.find_one({'nome_sanitizado': nome_sanitizado}): return await ctx.send("opa! esse filme já está na nossa lista pra assistir. tá com a memória ruim, hein?")
-            if await assistidos_db.find_one({'nome_sanitizado': nome_sanitizado}): return await ctx.send("já vimos esse, cara. já esqueceu? então era ruim mesmo...")
+            if await assistidos_db.find_one({'nome_sanitizado': nome_sanitizado}): return await ctx.send("já vimos esse, cara. já esqueceu?")
             await watchlist_db.insert_one({'nome': argumento, 'nome_sanitizado': nome_sanitizado, 'adicionado_por': ctx.author.display_name})
             await ctx.send(f"anotado! '{argumento}' foi pra nossa watchlist.")
         else:
@@ -267,18 +204,4 @@ class Geral(commands.Cog):
             except: pass
         ranking = []
         for user_id, stats in placar.items():
-            media = stats['soma_notas'] / stats['quantidade'] if stats['quantidade'] > 0 else 0
-            ranking.append({'nome': stats['nome'], 'quantidade': stats['quantidade'], 'media': media, 'likes': stats['likes']})
-        ranking.sort(key=lambda x: (x['media'], x['likes']), reverse=True)
-        msg = "📊 eu sou o verdadeiro vencedor, que tive que assistir vocês dois calado. mas tá aqui o ranking: \n"
-        medalhas = ["🥇", "🥈", "🥉"]
-        for i, pessoa in enumerate(ranking):
-            medalha = medalhas[i] if i < len(medalhas) else f"{i+1}."
-            msg += f"\n{medalha} **{pessoa['nome']}**\n- {pessoa['quantidade']} filme(s) escolhidos\n- média: {pessoa['media']:.2f}\n- {pessoa['likes']} ganharam like supremo 🌟\n"
-        msg += "\ne o prêmio é vocês terem se achado mesmo com esse gosto esquisito. parabéns! 🎥💔🫶"
-        await ctx.send(msg)
-
-
-
-async def setup(bot):
-    await bot.add_cog(Geral(bot))
+            media = stats

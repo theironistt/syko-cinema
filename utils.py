@@ -14,11 +14,10 @@ DB_CLIENT = motor.motor_asyncio.AsyncIOMotorClient(
 )
 db = DB_CLIENT.sykocinema
 
-# Nossas "tabelas" no banco de dados
 assistidos_db = db.assistidos
 watchlist_db = db.watchlist
 agendamentos_db = db.agendamentos
-configuracoes_db = db.configuracoes # <-- NOVA COLEÇÃO
+configuracoes_db = db.configuracoes
 
 async def setup_database():
     try:
