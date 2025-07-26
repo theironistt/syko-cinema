@@ -20,10 +20,10 @@ async def on_ready():
     if bot.initialized:
         return
 
-    print(f'logado com sucesso como {bot.user}!')
-    print(f'versão final e estável. pronto para catalogar!')
+    print(f'Logado com sucesso como {bot.user}!')
+    print(f'Versão final e estável. Pronto para catalogar!')
     print('------')
-    
+
     await setup_database()
 
     for filename in os.listdir('./cogs'):
@@ -33,32 +33,31 @@ async def on_ready():
                 print(f'Cog {filename} carregado com sucesso.')
             except Exception as e:
                 print(f'Falha ao carregar o cog {filename}: {e}')
-    
+
     bot.initialized = True
-    print("--- bot pronto e operacional! ---")
+    print("--- Bot pronto e operacional! ---")
 
 async def main():
-    keep_alive()
-    
+    keep_alive()  # Inicia o servidor Flask (para UptimeRobot)
+
     try:
-        TOKEN = os.environ['DISCORD_TOKEN']
+        TOKEN = os.environ.get("DISCORD_TOKEN")
         if TOKEN:
-            # --- CORREÇÃO FINAL: Pausa de 5 segundos antes de conectar ---
-            # Isso ajuda a evitar o bloqueio por "rate limit" na inicialização.
+            # Pequeno delay ajuda a evitar bloqueio de IP compartilhado na inicialização
             await asyncio.sleep(5)
             await bot.start(TOKEN)
         else:
-            print("Erro: O token do Discord não foi encontrado.")
-    except KeyError:
-        print("ERRO CRÍTICO: Token não configurado.")
+            print("Erro: o token do Discord não foi encontrado na variável DISCORD_TOKEN.")
     except discord.errors.HTTPException as e:
         if e.status == 429:
             print("\n--- ERRO DE RATE LIMIT ---")
             print("O bot está temporariamente bloqueado pelo Discord por muitas tentativas de conexão.")
             print("Isso geralmente é causado por um problema no IP do servidor de hospedagem.")
-            print("Aguarde alguns minutos ou force um 'Clear build cache & deploy' no Render para tentar obter um novo IP.")
+            print("Aguarde alguns minutos ou use outra plataforma (como Railway) para obter um IP diferente.")
         else:
             raise e
+    except Exception as e:
+        print(f"Erro inesperado: {e}")
 
 if __name__ == "__main__":
     try:
